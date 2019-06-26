@@ -193,11 +193,9 @@ class InstaBot:
         self.current_owner = ""
         self.error_400 = 0
         self.unwanted_username_list = config.get("unwanted_username_list")
-        now_time = datetime.datetime.now()
         self.check_for_bot_update()
-        log_string = "Instabot v1.2.6/0 started at %s:" % (
-            now_time.strftime("%d.%m.%Y %H:%M")
-        )
+        now_time = datetime.datetime.now()
+        log_string = "Instabot v1.2.6/0 started at %s:" % (now_time.strftime("%d.%m.%Y %H:%M"))
         self.logger.info(log_string)
         self.login()
         self.prog_run = True
@@ -260,7 +258,7 @@ class InstaBot:
                         "window._sharedData = (.*?);</script>", info.text, re.DOTALL
                     ).group(1)
                 )
-            except JSONDecodeError as e:
+            except JSONDecodeError:
                 self.logger.info(
                     f"Account of user {user} was deleted or link is " "invalid"
                 )
@@ -307,7 +305,7 @@ class InstaBot:
                 "password": self.user_password,
             }
             r = self.s.get(self.url)
-            csrf_token = re.search('(?<="csrf_token":")\w+', r.text).group(0)
+            csrf_token = re.search(r'(?<="csrf_token":")\w+', r.text).group(0)
             self.s.headers.update({"X-CSRFToken": csrf_token})
             time.sleep(5 * random.random())
             login = self.s.post(
@@ -373,24 +371,16 @@ class InstaBot:
 
                         # Get CSRF Token from challenge page
                         challenge_csrf_token = re.search(
-                            '(?<="csrf_token":")\w+', challenge_request_explore.text
+                            r'(?<="csrf_token":")\w+', challenge_request_explore.text
                         ).group(0)
                         # Get Rollout Hash from challenge page
                         rollout_hash = re.search(
-                            '(?<="rollout_hash":")\w+', challenge_request_explore.text
+                            r'(?<="rollout_hash":")\w+', challenge_request_explore.text
                         ).group(0)
-
-                        # Ask for option 1 from challenge, which is usually Email or Phone
-                        challenge_post = {"choice": 1}
 
                         # Update headers for challenge submit page
                         clg.headers.update({"X-CSRFToken": challenge_csrf_token})
                         clg.headers.update({"Referer": challenge_url})
-
-                        # Request instagram to send a code
-                        challenge_request_code = clg.post(
-                            challenge_url, data=challenge_post, allow_redirects=True
-                        )
 
                         # User should receive a code soon, ask for it
                         challenge_userinput_code = input(
@@ -422,7 +412,7 @@ class InstaBot:
                 return
 
             else:
-                rollout_hash = re.search('(?<="rollout_hash":")\w+', r.text).group(0)
+                rollout_hash = re.search(r'(?<="rollout_hash":")\w+', r.text).group(0)
                 self.s.headers.update({"X-Instagram-AJAX": rollout_hash})
                 successfulLogin = True
             # ig_vw=1536; ig_pr=1.25; ig_vh=772;  ig_or=landscape-primary;
@@ -435,7 +425,7 @@ class InstaBot:
 
         if successfulLogin:
             r = self.s.get("https://www.instagram.com/")
-            self.csrftoken = re.search('(?<="csrf_token":")\w+', r.text).group(0)
+            self.csrftoken = re.search(r'(?<="csrf_token":")\w+', r.text).group(0)
             self.s.cookies["csrftoken"] = self.csrftoken
             self.s.headers.update({"X-CSRFToken": self.csrftoken})
             finder = r.text.find(self.user_login)
@@ -465,23 +455,18 @@ class InstaBot:
             self.logger.error("Login error! Connection error!")
 
     def logout(self):
-        now_time = datetime.datetime.now()
-        log_string = (
-                "Logout: likes - %i, follow - %i, unfollow - %i, comments - %i."
-                % (
-                    self.like_counter,
-                    self.follow_counter,
-                    self.unfollow_counter,
-                    self.comments_counter,
-                )
-        )
+        fmt = "Logout: likes - {}, follow - {}, unfollow - {}, comments - {}."
+        log_string = fmt.format(self.like_counter,
+                                self.follow_counter,
+                                self.unfollow_counter,
+                                self.comments_counter)
         self.logger.info(log_string)
         work_time = datetime.datetime.now() - self.bot_start
         self.logger.info(f"Bot work time: {work_time}")
 
         try:
             logout_post = {"csrfmiddlewaretoken": self.csrftoken}
-            logout = self.s.post(self.url_logout, data=logout_post)
+            _ = self.s.post(self.url_logout, data=logout_post)
             self.logger.info("Logout success!")
             self.login_status = False
         except:
@@ -659,7 +644,10 @@ class InstaBot:
                                     # Like, all ok!
                                     self.error_400 = 0
                                     self.like_counter += 1
-                                    log_string = f"Liked: {self.media_by_tag[i]['node']['id']}. Like #{self.like_counter} {self.url_media % self.media_by_tag[i]['node']['shortcode']}."
+                                    fmt = "Liked: {}. Like #{} {} {}."
+                                    log_string = fmt.format(self.media_by_tag[i]['node']['id'],
+                                                            self.like_counter,
+                                                            self.url_media % self.media_by_tag[i]['node']['shortcode'])
 
                                     self.persistence.insert_media(
                                         media_id=self.media_by_tag[i]["node"]["id"],
@@ -713,7 +701,6 @@ class InstaBot:
             url_likes = self.url_likes % (media_id)
             try:
                 like = self.s.post(url_likes)
-                last_liked_media_id = media_id
             except:
                 logging.exception("Except on like!")
                 like = 0
@@ -1029,17 +1016,14 @@ class InstaBot:
                 # let bot initialize
                 return
             if self.persistence.get_username_row_count() < 20:
-                self.logger.debug(
-                    f"> Waiting for database to populate before unfollowing (progress {str(self.persistence.get_username_row_count())} /20)"
-                )
+                fmt = "> Waiting for database to populate before unfollowing (progress {}/20)"
+                self.logger.debug(fmt.format(str(self.persistence.get_username_row_count())))
 
                 if self.unfollow_recent_feed is True:
                     self.logger.debug("Will try to populate using recent feed")
                     self.populate_from_feed()
 
-                self.next_iteration["Unfollow"] = time.time() + (
-                        self.add_time(self.unfollow_delay) / 2
-                )
+                self.next_iteration["Unfollow"] = time.time() + (self.add_time(self.unfollow_delay) / 2)
                 return  # DB doesn't have enough followers yet
 
             if self.bot_mode == 0 or self.bot_mode == 3:
@@ -1252,7 +1236,6 @@ class InstaBot:
                     )["entry_data"]["ProfilePage"][0]
 
                     user_info = all_data["graphql"]["user"]
-                    i = 0
                     log_string = "Checking user info.."
                     self.logger.debug(log_string)
 
@@ -1382,7 +1365,6 @@ class InstaBot:
                     )["entry_data"]["ProfilePage"][0]
 
                     user_info = all_data["graphql"]["user"]
-                    i = 0
                     log_string = "Checking user info.."
                     self.logger.debug(log_string)
 
@@ -1463,7 +1445,6 @@ class InstaBot:
 
     def get_media_id_recent_feed(self):
         if self.login_status:
-            now_time = datetime.datetime.now()
             log_string = f"{self.user_login} : Get media id on recent feed"
             self.logger.debug(log_string)
             if self.login_status == 1:
@@ -1472,7 +1453,7 @@ class InstaBot:
                     r = self.s.get(url_tag)
 
                     jsondata = re.search(
-                        "additionalDataLoaded\('feed',({.*})\);", r.text
+                        r"additionalDataLoaded\('feed',({.*})\);", r.text
                     ).group(1)
                     all_data = json.loads(jsondata.strip())
 

@@ -7,6 +7,10 @@ import os
 import re
 import sys
 
+
+from instabot_py import InstaBot
+
+
 if os.name != "nt":
     from blessings import Terminal
 
@@ -15,9 +19,19 @@ if os.name != "nt":
 else:
     OS_IS_NT = True
 
-from instabot_py import InstaBot
 
-python_version_test = f"If you are reading this error, you are not running Python 3.6 or greater. Check 'python --version' or 'python3 --version'."
+CURRENT_PYTHON_VERSION = sys.version_info[:2]
+REQUIRED_PYTHON_VERSION = (3, 6)
+
+if CURRENT_PYTHON_VERSION < REQUIRED_PYTHON_VERSION:
+    sys.stderr.write("""
+===========================
+Unsupported Python version
+===========================
+This version of instabot.py requires Python {}.{}, but you're trying run it on Python {}.{}
+""".format(*(REQUIRED_PYTHON_VERSION, CURRENT_PYTHON_VERSION)))
+    sys.exit(1)
+
 
 config_location = "instabot.config.ini"
 config = configparser.ConfigParser()
@@ -83,14 +97,14 @@ def setupinteractive(config, config_location="instabot.config.ini"):
     }
 
     configsettings_labels = {
-        "like_per_day": "The bot will adjust its speed to LIKE this amount of posts in a 24H period (max ~1200, new accounts accounts ~250)",
+        "like_per_day": "The bot will adjust its speed to LIKE this amount of posts in a 24H period (max ~1200, new accounts accounts ~250)",  # noqa: E501
         "follow_per_day": "The bot will adjust its speed to FOLLOW this amount of accounts in a 24H period (max ~290)",
-        "follow_time": "After following an account, the bot will wait this amount of SECONDS before it checks if an account should be unfollowed (if it meets the unfollow criteria)",
-        "unfollow_per_day": "The bot will adjust its speed to UNFOLLOW this amount of accounts in a 24H period (max ~250)",
-        "unfollow_selebgram": "(Unfollow Criteria) Unfollow accounts that are possibly celebrities/influencers (True/False)",
-        "unfollow_probably_fake": "(Unfollow Criteria) Unfollow accounts w/ few followers and high following (True/False)",
+        "follow_time": "After following an account, the bot will wait this amount of SECONDS before it checks if an account should be unfollowed (if it meets the unfollow criteria)",  # noqa: E501
+        "unfollow_per_day": "The bot will adjust its speed to UNFOLLOW this amount of accounts in a 24H period (max ~250)",  # noqa: E501
+        "unfollow_selebgram": "(Unfollow Criteria) Unfollow accounts that are possibly celebrities/influencers (True/False)",  # noqa: E501
+        "unfollow_probably_fake": "(Unfollow Criteria) Unfollow accounts w/ few followers and high following (True/False)",  # noqa: E501
         "unfollow_inactive": "(Unfollow Criteria) Unfollow accounts that seem to be inactive (True/False)",
-        "unfollow_recent_feed": "Fetches acounts from your recent feed and queues them for unfollow if they meet the (Unfollow Criteria) (True/False)",
+        "unfollow_recent_feed": "Fetches acounts from your recent feed and queues them for unfollow if they meet the (Unfollow Criteria) (True/False)",  # noqa: E501
     }
 
     config["DEFAULT"] = {
@@ -252,7 +266,7 @@ def setupinteractive(config, config_location="instabot.config.ini"):
             section = "DEFAULT"
 
         while requiredset is None:
-            if reqset is "req":
+            if reqset == "req":
                 confvar = ask_question(
                     f"Enter value for '{setting}':", tip="This field is required"
                 )
